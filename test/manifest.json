@@ -1,0 +1,12 @@
+{
+  "name": "Envision test app",
+  "short_name": "Test app",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3F0E9",
+  "theme_color": "#16A05A",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

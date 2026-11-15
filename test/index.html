@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envision test app</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Test app">
+<meta name="theme-color" content="#16A05A">
+<style>
+  :root { --green:#16A05A; --ink:#101B2B; --muted:#6B7585; --paper:#F3F0E9; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system, "Segoe UI", Roboto, sans-serif; color:var(--ink); background:var(--paper);
+         padding:calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom)); }
+  h1 { font-size:22px; margin:4px 0 2px; }
+  .sub { color:var(--muted); font-size:13px; margin:0 0 14px; }
+  .card { background:#fff; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .total { font-size:28px; font-weight:800; color:var(--green); }
+  form { display:flex; gap:8px; }
+  input { flex:1; min-width:0; font-size:16px; padding:10px; border:1px solid #ccc; border-radius:10px; }
+  input[type=number] { flex:0 0 90px; }
+  button { font-size:16px; padding:10px 14px; border:0; border-radius:10px; background:var(--green); color:#fff; font-weight:700; }
+  button.ghost { background:#fff; color:var(--ink); border:1px solid #ccc; font-weight:600; }
+  ul { list-style:none; margin:0; padding:0; }
+  li { display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid #eee; font-size:15px; }
+  li:last-child { border-bottom:0; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .note { font-size:12px; color:var(--muted); margin-top:8px; }
+</style>
+</head>
+<body>
+  <h1>Test app: does it remember?</h1>
+  <p class="sub">Envision Academy · made-up figures only</p>
+
+  <div class="card">
+    <div class="sub" style="margin:0">Spent so far</div>
+    <div class="total" id="total">$0</div>
+  </div>
+
+  <div class="card">
+    <form id="add">
+      <input id="what" placeholder="What (e.g. Snacks)" required>
+      <input id="amount" type="number" inputmode="decimal" min="0" step="0.1" placeholder="$" required>
+      <button>Add</button>
+    </form>
+  </div>
+
+  <div class="card"><ul id="list"></ul></div>
+
+  <div class="card">
+    <div class="row">
+      <button class="ghost" id="export">Export</button>
+      <button class="ghost" id="importBtn">Import</button>
+      <button class="ghost" id="clear">Clear all</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden>
+    </div>
+    <p class="note" id="info"></p>
+  </div>
+
+<script>
+  // Saved on this device only, under its own storage name.
+  const KEY = "test-money-app";
+  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; } };
+  let items = load();
+  const save = () => localStorage.setItem(KEY, JSON.stringify(items));
+  const money = (n) => "$" + n.toFixed(2).replace(/\.00$/, "");
+
+  function render() {
+    document.getElementById("total").textContent = money(items.reduce((s, x) => s + x.amount, 0));
+    const ul = document.getElementById("list");
+    ul.innerHTML = items.length ? "" : '<li><span class="sub" style="margin:0">Nothing yet. Add an entry, close the app, then open it again.</span></li>';
+    items.slice().reverse().forEach((x) => {
+      const li = document.createElement("li");
+      const a = document.createElement("span"); a.textContent = x.what + " · " + new Date(x.at).toLocaleDateString();
+      const b = document.createElement("strong"); b.textContent = money(x.amount);
+      li.append(a, b); ul.append(li);
+    });
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+    document.getElementById("info").textContent =
+      (standalone ? "Opened from the home screen. " : "Opened in the browser. ") + items.length + " saved entries on this device.";
+  }
+
+  document.getElementById("add").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const what = document.getElementById("what").value.trim();
+    const amount = parseFloat(document.getElementById("amount").value);
+    if (!what || !(amount >= 0)) return;
+    items.push({ what, amount, at: Date.now() }); save(); render();
+    e.target.reset(); document.getElementById("what").focus();
+  });
+
+  document.getElementById("export").addEventListener("click", () => {
+    const blob = new Blob([JSON.stringify(items, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "my-money-data.json"; a.click();
+  });
+  document.getElementById("importBtn").addEventListener("click", () => document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    try { const data = JSON.parse(await f.text()); if (Array.isArray(data)) { items = data; save(); render(); } }
+    catch (err) { alert("That file could not be read."); }
+  });
+  document.getElementById("clear").addEventListener("click", () => {
+    if (confirm("Delete all entries on this device?")) { items = []; save(); render(); }
+  });
+
+  render();
+</script>
+</body>
+</html>
